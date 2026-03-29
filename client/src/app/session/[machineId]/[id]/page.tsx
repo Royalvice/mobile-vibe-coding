@@ -11,6 +11,7 @@ import { useStore } from '@/lib/store';
 import { sendToMachine, useTerminalWriter } from '@/lib/connection';
 import PromptCard from '@/components/PromptCard';
 import QuickBar from '@/components/QuickBar';
+import ChatSessionSwitcher from '@/components/ChatSessionSwitcher';
 
 const TerminalView = dynamic(() => import('@/components/TerminalView'), { ssr: false });
 
@@ -25,8 +26,8 @@ export default function SessionPage() {
   const status = machineStatuses[machineId] || 'disconnected';
   const writeRef = useRef<((data: string) => void) | null>(null);
   const [writerReady, setWriterReady] = useState(false);
+  const [showSwitcher, setShowSwitcher] = useState(false);
 
-  // Attach to session on mount
   useEffect(() => {
     sendToMachine(machineId, { type: 'attach_session', sessionId });
     return () => {
@@ -34,7 +35,6 @@ export default function SessionPage() {
     };
   }, [machineId, sessionId]);
 
-  // Register terminal writer so connection manager can route output here
   useTerminalWriter(machineId, sessionId, writerReady ? writeRef.current : null);
 
   const handleTermData = useCallback((data: string) => {
@@ -76,12 +76,24 @@ export default function SessionPage() {
           </button>
           <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{sessionId}</span>
         </div>
-        <span style={{
-          fontSize: '10px',
-          width: '8px', height: '8px', borderRadius: '50%',
-          background: status === 'connected' ? 'var(--success)' : 'var(--error)',
-          display: 'inline-block',
-        }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Chat session switcher button */}
+          <button
+            onClick={() => setShowSwitcher(true)}
+            style={{
+              padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--border)',
+              background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer',
+              fontSize: '11px', fontWeight: 500,
+            }}
+          >
+            Chats
+          </button>
+          <span style={{
+            width: '8px', height: '8px', borderRadius: '50%',
+            background: status === 'connected' ? 'var(--success)' : 'var(--error)',
+            display: 'inline-block',
+          }} />
+        </div>
       </div>
 
       {/* Terminal */}
@@ -96,6 +108,15 @@ export default function SessionPage() {
 
       {/* Quick action bar for mobile */}
       <QuickBar onSend={handleTermData} />
+
+      {/* Chat session switcher overlay */}
+      {showSwitcher && (
+        <ChatSessionSwitcher
+          machineId={machineId}
+          sessionId={sessionId}
+          onClose={() => setShowSwitcher(false)}
+        />
+      )}
 
       {/* Prompt card overlay */}
       {activePrompt && activePrompt.sessionId === sessionId && (

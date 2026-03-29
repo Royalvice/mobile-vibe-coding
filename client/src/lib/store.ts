@@ -1,7 +1,7 @@
 // Zustand store for global app state — supports multiple machines simultaneously
 
 import { create } from 'zustand';
-import type { SessionInfo, HwStatus, InteractivePrompt, EventLogEntry, AppConfig, MachineConfig } from '@shared/types';
+import type { SessionInfo, ChatSession, HwStatus, InteractivePrompt, EventLogEntry, AppConfig, MachineConfig } from '@shared/types';
 
 interface AppState {
   // Per-machine connection status
@@ -47,6 +47,10 @@ interface AppState {
   // Directory browser: machineId -> { path, dirs }
   dirListCache: Record<string, { path: string; dirs: string[] }>;
   setDirList: (machineId: string, path: string, dirs: string[]) => void;
+
+  // Chat sessions: "machineId:sessionId" -> ChatSession[]
+  chatSessionsCache: Record<string, ChatSession[]>;
+  setChatSessions: (machineId: string, sessionId: string, sessions: ChatSession[]) => void;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -123,5 +127,11 @@ export const useStore = create<AppState>((set, get) => ({
   setDirList: (machineId, path, dirs) =>
     set((state) => ({
       dirListCache: { ...state.dirListCache, [machineId]: { path, dirs } },
+    })),
+
+  chatSessionsCache: {},
+  setChatSessions: (machineId, sessionId, sessions) =>
+    set((state) => ({
+      chatSessionsCache: { ...state.chatSessionsCache, [`${machineId}:${sessionId}`]: sessions },
     })),
 }));

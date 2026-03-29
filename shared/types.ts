@@ -27,6 +27,16 @@ export interface AppConfig {
 
 export type AgentTool = 'codex' | 'claude-code';
 
+/** A CLI-level chat session (codex/cc's own session, not our tmux session) */
+export interface ChatSession {
+  id: string;
+  /** Display label, e.g. first prompt or timestamp */
+  label: string;
+  tool: AgentTool;
+  workdir: string;
+  updatedAt: number;
+}
+
 export interface SessionInfo {
   id: string;
   name: string;
@@ -35,6 +45,8 @@ export interface SessionInfo {
   createdAt: number;
   /** Whether the CLI process is still alive */
   alive: boolean;
+  /** Currently active CLI chat session id, if known */
+  chatSessionId?: string;
 }
 
 // --- Hardware Status ---

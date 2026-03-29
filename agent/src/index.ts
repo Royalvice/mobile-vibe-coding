@@ -12,6 +12,7 @@ import { OutputParser } from './output-parser.js';
 import { AutoModeController } from './auto-mode.js';
 import { EventLog } from './event-log.js';
 import { collectHwStatus } from './hw-monitor.js';
+import { listChatSessions } from './chat-sessions.js';
 import type { ServerMessage, ClientMessage } from '../../shared/protocol.js';
 
 const PORT = parseInt(process.env.MVC_PORT || '9876', 10);
@@ -99,13 +100,16 @@ wss.on('connection', (ws) => {
 function handleMessage(client: ClientState, msg: ClientMessage): void {
   switch (msg.type) {
     case 'create_session': {
-      const info = sessionManager.create(msg.tool, msg.workdir, msg.name);
+      const info = sessionManager.create(
+        msg.tool, msg.workdir, msg.name,
+        msg.mode || 'new', msg.chatSessionId,
+      );
       broadcast({
         type: 'session_list',
         machineId: 'local',
         sessions: sessionManager.list(),
       });
-      eventLog.add(info.id, 'info', `Session created: ${info.name} (${info.tool})`);
+      eventLog.add(info.id, 'info', `Session created: ${info.name} (${info.tool}, mode: ${msg.mode || 'new'})`);
       break;
     }
 
@@ -249,6 +253,33 @@ function handleMessage(client: ClientState, msg: ClientMessage): void {
         sendTo(client, { type: 'dir_list', path: resolved, dirs });
       } catch {
         sendTo(client, { type: 'dir_list', path: msg.path || homedir(), dirs: [] });
+      }
+      break;
+    }
+
+    case 'list_chat_sessions': {
+      const session = sessionManager.get(msg.sessionId);
+      if (!session) {
+        sendTo(client, { type: 'error', code: 'NOT_FOUND', message: 'Session not found' });
+        return;
+      }
+      const chatSessions = listChatSessions(session.tool, session.workdir);
+      sendTo(client, {
+        type: 'chat_session_list',
+        sessionId: msg.sessionId,
+        chatSessions,
+      });
+      break;
+    }
+
+    case 'switch_chat_session': {
+      const cmd = sessionManager.switchChatSession(
+        msg.sessionId, msg.mode, msg.chatSessionId,
+      );
+      if (cmd) {
+        eventLog.add(msg.sessionId, 'info', `Switched chat session: ${cmd}`, 'chat_switched');
+      } else {
+        sendTo(client, { type: 'error', code: 'SWITCH_FAILED', message: 'Failed to switch chat session' });
       }
       break;
     }

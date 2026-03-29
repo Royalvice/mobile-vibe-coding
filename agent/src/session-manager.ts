@@ -6,6 +6,7 @@
 import { execSync } from 'child_process';
 import * as pty from 'node-pty';
 import { nanoid } from 'nanoid';
+import { buildToolCommand } from './chat-sessions.js';
 import type { SessionInfo, AgentTool } from '../../shared/types.js';
 
 const IS_WINDOWS = process.platform === 'win32';
@@ -28,7 +29,7 @@ function tmuxCmd(args: string): string {
 }
 
 function toolCommand(tool: AgentTool): string {
-  return tool === 'codex' ? 'codex' : 'claude';
+  return buildToolCommand(tool, 'new');
 }
 
 function shellForPlatform(): string {
@@ -76,9 +77,15 @@ export class SessionManager {
     }
   }
 
-  create(tool: AgentTool, workdir: string, name?: string): SessionInfo {
+  create(
+    tool: AgentTool,
+    workdir: string,
+    name?: string,
+    mode: 'new' | 'continue' | 'resume' = 'new',
+    chatSessionId?: string,
+  ): SessionInfo {
     const id = nanoid(8);
-    const cmd = toolCommand(tool);
+    const cmd = buildToolCommand(tool, mode, chatSessionId);
     const displayName = name || `${tool}-${id}`;
 
     const info: SessionInfo = {
@@ -88,6 +95,7 @@ export class SessionManager {
       workdir,
       createdAt: Date.now(),
       alive: true,
+      chatSessionId: mode === 'resume' ? chatSessionId : undefined,
     };
 
     if (IS_WINDOWS) {
@@ -184,5 +192,56 @@ export class SessionManager {
 
   get platform(): 'linux' | 'windows' {
     return IS_WINDOWS ? 'windows' : 'linux';
+  }
+
+  /**
+   * Hot-switch the CLI chat session inside an existing tmux/pty session.
+   * Sends Ctrl+C to kill current CLI, then starts a new one with the target chat session.
+   * The tmux session and WebSocket connection stay alive.
+   *
+   * Returns the new command that was sent, or null on failure.
+   */
+  switchChatSession(
+    sessionId: string,
+    mode: 'new' | 'continue' | 'resume',
+    chatSessionId?: string,
+  ): string | null {
+    const session = this.sessions.get(sessionId);
+    if (!session) return null;
+
+    const cmd = buildToolCommand(session.info.tool, mode, chatSessionId);
+
+    if (session.tmuxName) {
+      // Linux: send Ctrl+C then the new command to the tmux session
+      try {
+        // Send Ctrl+C to kill current process
+        execSync(`tmux send-keys -t "${session.tmuxName}" C-c`, { encoding: 'utf-8' });
+        // Small delay then send exit + new command
+        execSync(`tmux send-keys -t "${session.tmuxName}" "exit" Enter`, { encoding: 'utf-8' });
+        // Wait a moment for the process to die, then send new command
+        setTimeout(() => {
+          try {
+            execSync(`tmux send-keys -t "${session.tmuxName}" "${cmd}" Enter`, { encoding: 'utf-8' });
+          } catch { /* ignore */ }
+        }, 500);
+      } catch {
+        return null;
+      }
+    } else if (session.ptyProc) {
+      // Windows: send Ctrl+C then the new command directly to the PTY
+      session.ptyProc.write('\x03'); // Ctrl+C
+      setTimeout(() => {
+        session.ptyProc?.write('exit\r');
+        setTimeout(() => {
+          session.ptyProc?.write(`${cmd}\r`);
+        }, 300);
+      }, 200);
+    } else {
+      return null;
+    }
+
+    // Update session info
+    session.info.chatSessionId = mode === 'resume' ? chatSessionId : undefined;
+    return cmd;
   }
 }

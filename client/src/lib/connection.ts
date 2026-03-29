@@ -146,6 +146,9 @@ function handleServerMessage(machineId: string, msg: ServerMessage): void {
     case 'dir_list':
       store.setDirList(machineId, msg.path, msg.dirs);
       break;
+    case 'chat_session_list':
+      store.setChatSessions(machineId, msg.sessionId, msg.chatSessions);
+      break;
     case 'error':
       console.error(`Agent error [${machineId}]: ${msg.code} — ${msg.message}`);
       break;

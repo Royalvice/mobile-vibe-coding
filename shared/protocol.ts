@@ -5,6 +5,7 @@
 
 import type {
   SessionInfo,
+  ChatSession,
   HwStatus,
   InteractivePrompt,
   AutoModeConfig,
@@ -82,6 +83,13 @@ export interface DirListMessage {
   dirs: string[];
 }
 
+/** Available CLI chat sessions for a given tool+workdir */
+export interface ChatSessionListMessage {
+  type: 'chat_session_list';
+  sessionId: string;
+  chatSessions: ChatSession[];
+}
+
 /** Error from agent */
 export interface AgentErrorMessage {
   type: 'error';
@@ -99,6 +107,7 @@ export type ServerMessage =
   | EventLogBatchMessage
   | EventLogNewMessage
   | DirListMessage
+  | ChatSessionListMessage
   | AgentErrorMessage;
 
 // ============================================================
@@ -128,6 +137,29 @@ export interface CreateSessionMessage {
   tool: AgentTool;
   workdir: string;
   name?: string;
+  /** 'new' = fresh chat, 'continue' = most recent, 'resume' = specific chatSessionId */
+  mode?: 'new' | 'continue' | 'resume';
+  /** CLI chat session id to resume (only when mode === 'resume') */
+  chatSessionId?: string;
+}
+
+/** List available CLI chat sessions for a tmux session's tool+workdir */
+export interface ListChatSessionsMessage {
+  type: 'list_chat_sessions';
+  sessionId: string;
+}
+
+/**
+ * Hot-switch the CLI chat session inside an existing tmux session.
+ * Kills the current CLI process and restarts with the target chat session.
+ * The tmux session and WebSocket connection stay alive.
+ */
+export interface SwitchChatSessionMessage {
+  type: 'switch_chat_session';
+  sessionId: string;
+  /** 'new' = fresh chat, 'continue' = most recent, 'resume' = specific id */
+  mode: 'new' | 'continue' | 'resume';
+  chatSessionId?: string;
 }
 
 /** Attach to an existing session (start receiving output) */
@@ -201,6 +233,8 @@ export type ClientMessage =
   | DetachSessionMessage
   | KillSessionMessage
   | ListSessionsMessage
+  | ListChatSessionsMessage
+  | SwitchChatSessionMessage
   | RequestHwStatusMessage
   | ResizeMessage
   | SetAutoModeMessage
