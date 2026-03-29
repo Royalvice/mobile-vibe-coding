@@ -2,26 +2,14 @@
 
 // Home page: machine list with live connection status
 
-import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useStore } from '@/lib/store';
-import { loadConfig } from '@/lib/config';
-import { useConnectAll } from '@/lib/connection';
 
 export default function HomePage() {
   const t = useTranslations('home');
   const router = useRouter();
-  const { machines, setConfig, setMachines, machineStatuses, machineSessions } = useStore();
-
-  useEffect(() => {
-    const config = loadConfig();
-    setConfig(config);
-    setMachines(config.machines);
-  }, [setConfig, setMachines]);
-
-  // Connect to all configured machines
-  useConnectAll();
+  const { machines, machineStatuses, machineSessions } = useStore();
 
   return (
     <div style={{ padding: '20px', maxWidth: '480px', margin: '0 auto' }}>
@@ -70,10 +58,7 @@ export default function HomePage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '15px', fontWeight: 500 }}>{machine.name}</span>
                   <span style={{
-                    fontSize: '10px',
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
+                    width: '8px', height: '8px', borderRadius: '50%', display: 'inline-block',
                     background: status === 'connected' ? 'var(--success)' : status === 'reconnecting' ? 'var(--warning)' : 'var(--error)',
                   }} />
                 </div>
@@ -95,11 +80,6 @@ export default function HomePage() {
 }
 
 const headerBtnStyle: React.CSSProperties = {
-  padding: '8px 14px',
-  borderRadius: '8px',
-  border: '1px solid var(--border)',
-  background: 'var(--bg-card)',
-  color: 'var(--text-secondary)',
-  cursor: 'pointer',
-  fontSize: '13px',
+  padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border)',
+  background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '13px',
 };
