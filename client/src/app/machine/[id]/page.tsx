@@ -7,7 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useStore } from '@/lib/store';
 import HwMonitor from '@/components/HwMonitor';
-import type { SessionInfo } from '../../../../shared/types';
+import type { SessionInfo } from '@shared/types';
 
 export default function MachinePage() {
   const t = useTranslations('session');

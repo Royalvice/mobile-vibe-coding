@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useStore } from '@/lib/store';
-import type { PromptTemplate } from '../../../../shared/types';
+import type { PromptTemplate } from '@shared/types';
 
 export default function AutoPage() {
   const t = useTranslations('auto');

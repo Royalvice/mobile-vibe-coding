@@ -3,7 +3,7 @@
 // Hardware monitor dashboard component
 
 import { useTranslations } from 'next-intl';
-import type { HwStatus } from '../../../shared/types';
+import type { HwStatus } from '@shared/types';
 
 interface HwMonitorProps {
   status: HwStatus | null;

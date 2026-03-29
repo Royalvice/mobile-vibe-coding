@@ -10,7 +10,11 @@
       "WebFetch(domain:www.npmjs.com)",
       "WebFetch(domain:bing.com)",
       "WebFetch(domain:reddit.com)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx next:*)",
+      "Bash(timeout 5 npx tsx src/index.ts)"
     ]
   }
 }

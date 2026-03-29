@@ -1,6 +1,6 @@
 // Config import/export utilities
 
-import type { AppConfig } from '../../../shared/types';
+import type { AppConfig } from '@shared/types';
 
 const STORAGE_KEY = 'mvc-config';
 

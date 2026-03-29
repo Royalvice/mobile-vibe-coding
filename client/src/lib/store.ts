@@ -1,7 +1,7 @@
 // Zustand store for global app state
 
 import { create } from 'zustand';
-import type { SessionInfo, HwStatus, InteractivePrompt, EventLogEntry, AppConfig, MachineConfig } from '../../../shared/types';
+import type { SessionInfo, HwStatus, InteractivePrompt, EventLogEntry, AppConfig, MachineConfig } from '@shared/types';
 
 interface AppState {
   // Connection

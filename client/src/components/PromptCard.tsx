@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import type { InteractivePrompt } from '../../../shared/types';
+import type { InteractivePrompt } from '@shared/types';
 
 interface PromptCardProps {
   prompt: InteractivePrompt;

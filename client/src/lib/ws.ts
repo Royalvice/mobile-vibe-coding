@@ -1,6 +1,6 @@
 // WebSocket manager with auto-reconnect
 
-import type { ServerMessage, ClientMessage } from '../../../shared/protocol';
+import type { ServerMessage, ClientMessage } from '@shared/protocol';
 
 type MessageHandler = (msg: ServerMessage) => void;
 type StatusHandler = (status: 'connected' | 'disconnected' | 'reconnecting') => void;
