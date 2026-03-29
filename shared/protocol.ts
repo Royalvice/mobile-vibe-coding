@@ -75,6 +75,13 @@ export interface EventLogNewMessage {
   entry: EventLogEntry;
 }
 
+/** Directory listing response */
+export interface DirListMessage {
+  type: 'dir_list';
+  path: string;
+  dirs: string[];
+}
+
 /** Error from agent */
 export interface AgentErrorMessage {
   type: 'error';
@@ -91,6 +98,7 @@ export type ServerMessage =
   | AutoModeStatusMessage
   | EventLogBatchMessage
   | EventLogNewMessage
+  | DirListMessage
   | AgentErrorMessage;
 
 // ============================================================
@@ -172,6 +180,13 @@ export interface RequestEventLogMessage {
   limit?: number;
 }
 
+/** Browse directories on the remote machine */
+export interface BrowseDirsMessage {
+  type: 'browse_dirs';
+  /** Parent path to list subdirectories of. Empty string = home directory */
+  path: string;
+}
+
 /** Update prompt templates on the agent */
 export interface UpdateTemplatesMessage {
   type: 'update_templates';
@@ -190,4 +205,5 @@ export type ClientMessage =
   | ResizeMessage
   | SetAutoModeMessage
   | RequestEventLogMessage
-  | UpdateTemplatesMessage;
+  | UpdateTemplatesMessage
+  | BrowseDirsMessage;

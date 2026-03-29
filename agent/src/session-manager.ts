@@ -56,12 +56,18 @@ export class SessionManager {
       if (!name.startsWith(TMUX_PREFIX)) continue;
 
       const id = name.slice(TMUX_PREFIX.length);
+
+      // Try to get the actual working directory from tmux pane
+      let workdir = '~';
+      const paneDir = tmuxCmd(`display-message -t "${name}" -p "#{pane_current_path}" 2>/dev/null`);
+      if (paneDir) workdir = paneDir;
+
       this.sessions.set(id, {
         info: {
           id,
           name,
           tool: name.includes('codex') ? 'codex' : 'claude-code',
-          workdir: '~',
+          workdir,
           createdAt: Date.now(),
           alive: true,
         },

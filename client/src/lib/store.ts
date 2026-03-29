@@ -43,6 +43,10 @@ interface AppState {
   terminalWriters: Map<string, (data: string) => void>;
   registerTerminalWriter: (key: string, writer: (data: string) => void) => void;
   unregisterTerminalWriter: (key: string) => void;
+
+  // Directory browser: machineId -> { path, dirs }
+  dirListCache: Record<string, { path: string; dirs: string[] }>;
+  setDirList: (machineId: string, path: string, dirs: string[]) => void;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -114,4 +118,10 @@ export const useStore = create<AppState>((set, get) => ({
     writers.delete(key);
     set({ terminalWriters: writers });
   },
+
+  dirListCache: {},
+  setDirList: (machineId, path, dirs) =>
+    set((state) => ({
+      dirListCache: { ...state.dirListCache, [machineId]: { path, dirs } },
+    })),
 }));

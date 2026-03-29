@@ -143,6 +143,9 @@ function handleServerMessage(machineId: string, msg: ServerMessage): void {
       store.terminalWriters.get(key)?.(msg.data);
       break;
     }
+    case 'dir_list':
+      store.setDirList(machineId, msg.path, msg.dirs);
+      break;
     case 'error':
       console.error(`Agent error [${machineId}]: ${msg.code} — ${msg.message}`);
       break;

@@ -3,6 +3,9 @@
 // Starts a WebSocket server that bridges phone clients to tmux sessions
 
 import { WebSocketServer, WebSocket } from 'ws';
+import { readdirSync, statSync } from 'fs';
+import { resolve } from 'path';
+import { homedir } from 'os';
 import { SessionManager } from './session-manager.js';
 import { PtyBridge } from './pty-bridge.js';
 import { OutputParser } from './output-parser.js';
@@ -231,6 +234,22 @@ function handleMessage(client: ClientState, msg: ClientMessage): void {
         entries: result.entries,
         hasMore: result.hasMore,
       });
+      break;
+    }
+
+    case 'browse_dirs': {
+      try {
+        const base = msg.path || homedir();
+        const resolved = resolve(base);
+        const entries = readdirSync(resolved, { withFileTypes: true });
+        const dirs = entries
+          .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+          .map((e) => e.name)
+          .sort();
+        sendTo(client, { type: 'dir_list', path: resolved, dirs });
+      } catch {
+        sendTo(client, { type: 'dir_list', path: msg.path || homedir(), dirs: [] });
+      }
       break;
     }
   }
