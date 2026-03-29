@@ -2,58 +2,36 @@
 
 // Machine detail page: session list + hardware status
 
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useStore } from '@/lib/store';
+import { sendToMachine } from '@/lib/connection';
 import HwMonitor from '@/components/HwMonitor';
 import type { SessionInfo } from '@shared/types';
 
 export default function MachinePage() {
   const t = useTranslations('session');
-  const tHw = useTranslations('hw');
+  const tc = useTranslations('common');
   const params = useParams();
   const router = useRouter();
   const machineId = params.id as string;
 
-  const { machines, hwStatus, setHwStatus, sessions, setSessions } = useStore();
+  const { machines, machineHwStatus, machineSessions, machineStatuses } = useStore();
   const machine = machines.find((m) => m.id === machineId);
-  const wsRef = useRef<WebSocket | null>(null);
+  const status = machineStatuses[machineId] || 'disconnected';
+  const sessions = machineSessions[machineId] || [];
+  const hwStatus = machineHwStatus[machineId] || null;
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
-    if (!machine) return;
-
-    const url = machine.connectionType === 'tailscale' && machine.tailscaleHost
-      ? `ws://${machine.tailscaleHost}:${machine.port}`
-      : `ws://${machine.host}:${machine.port}`;
-
-    const ws = new WebSocket(url);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'list_sessions' }));
-      ws.send(JSON.stringify({ type: 'request_hw_status' }));
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'session_list') setSessions(msg.sessions);
-        if (msg.type === 'hw_status') setHwStatus(msg.status);
-      } catch { /* ignore */ }
-    };
-
-    return () => { ws.close(); };
-  }, [machine, setSessions, setHwStatus]);
-
   const createSession = (tool: 'codex' | 'claude-code') => {
-    wsRef.current?.send(JSON.stringify({
-      type: 'create_session',
-      tool,
-      workdir: '~',
-    }));
+    sendToMachine(machineId, { type: 'create_session', tool, workdir: '~' });
     setCreating(false);
+  };
+
+  const killSession = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    sendToMachine(machineId, { type: 'kill_session', sessionId });
   };
 
   if (!machine) {
@@ -70,10 +48,19 @@ export default function MachinePage() {
         >
           ←
         </button>
-        <div>
+        <div style={{ flex: 1 }}>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 600 }}>{machine.name}</h1>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{machine.host}:{machine.port}</div>
         </div>
+        <span style={{
+          fontSize: '11px',
+          padding: '3px 8px',
+          borderRadius: '6px',
+          background: status === 'connected' ? 'var(--success)22' : status === 'reconnecting' ? 'var(--warning)22' : 'var(--error)22',
+          color: status === 'connected' ? 'var(--success)' : status === 'reconnecting' ? 'var(--warning)' : 'var(--error)',
+        }}>
+          {tc(status)}
+        </span>
       </div>
 
       {/* Hardware status */}
@@ -85,38 +72,24 @@ export default function MachinePage() {
           <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 500 }}>Sessions</h2>
           <button
             onClick={() => setCreating(!creating)}
-            style={{
-              padding: '6px 12px',
-              borderRadius: '8px',
-              border: 'none',
-              background: 'var(--accent)',
-              color: '#fff',
-              cursor: 'pointer',
-              fontSize: '13px',
-            }}
+            style={{ padding: '6px 12px', borderRadius: '8px', border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontSize: '13px' }}
           >
             + {t('create')}
           </button>
         </div>
 
-        {/* Create session picker */}
         {creating && (
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-            <button onClick={() => createSession('codex')} style={toolBtnStyle}>
-              {t('codex')}
-            </button>
-            <button onClick={() => createSession('claude-code')} style={toolBtnStyle}>
-              {t('claudeCode')}
-            </button>
+            <button onClick={() => createSession('codex')} style={toolBtnStyle}>{t('codex')}</button>
+            <button onClick={() => createSession('claude-code')} style={toolBtnStyle}>{t('claudeCode')}</button>
           </div>
         )}
 
-        {/* Session list */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {sessions.map((s: SessionInfo) => (
             <button
               key={s.id}
-              onClick={() => router.push(`/session/${s.id}`)}
+              onClick={() => router.push(`/session/${machineId}/${s.id}`)}
               style={{
                 padding: '14px 16px',
                 borderRadius: '10px',
@@ -129,15 +102,23 @@ export default function MachinePage() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500 }}>{s.name}</span>
-                <span style={{
-                  fontSize: '11px',
-                  padding: '2px 8px',
-                  borderRadius: '4px',
-                  background: s.alive ? 'var(--success)22' : 'var(--error)22',
-                  color: s.alive ? 'var(--success)' : 'var(--error)',
-                }}>
-                  {s.alive ? 'alive' : 'dead'}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{
+                    fontSize: '11px',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    background: s.alive ? 'var(--success)22' : 'var(--error)22',
+                    color: s.alive ? 'var(--success)' : 'var(--error)',
+                  }}>
+                    {s.alive ? 'alive' : 'dead'}
+                  </span>
+                  <span
+                    onClick={(e) => killSession(s.id, e)}
+                    style={{ fontSize: '12px', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 4px' }}
+                  >
+                    ✕
+                  </span>
+                </div>
               </div>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
                 {s.tool} · {s.workdir}
@@ -156,12 +137,6 @@ export default function MachinePage() {
 }
 
 const toolBtnStyle: React.CSSProperties = {
-  flex: 1,
-  padding: '10px',
-  borderRadius: '8px',
-  border: '1px solid var(--border)',
-  background: 'var(--bg-secondary)',
-  color: 'var(--text-primary)',
-  cursor: 'pointer',
-  fontSize: '13px',
+  flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)',
+  background: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '13px',
 };

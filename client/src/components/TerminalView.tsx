@@ -13,9 +13,11 @@ interface TerminalViewProps {
   fontSize?: number;
   /** Ref to write data into the terminal */
   writeRef?: React.MutableRefObject<((data: string) => void) | null>;
+  /** Called after terminal is mounted and writeRef is set */
+  onReady?: () => void;
 }
 
-export default function TerminalView({ onData, onResize, fontSize = 14, writeRef }: TerminalViewProps) {
+export default function TerminalView({ onData, onResize, fontSize = 14, writeRef, onReady }: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
 
@@ -67,6 +69,7 @@ export default function TerminalView({ onData, onResize, fontSize = 14, writeRef
     }
 
     termRef.current = term;
+    onReady?.();
 
     const observer = new ResizeObserver(() => fitAddon.fit());
     observer.observe(containerRef.current);

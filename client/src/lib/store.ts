@@ -1,45 +1,48 @@
-// Zustand store for global app state
+// Zustand store for global app state — supports multiple machines simultaneously
 
 import { create } from 'zustand';
 import type { SessionInfo, HwStatus, InteractivePrompt, EventLogEntry, AppConfig, MachineConfig } from '@shared/types';
 
 interface AppState {
-  // Connection
-  connectionStatus: 'connected' | 'disconnected' | 'reconnecting';
-  setConnectionStatus: (s: AppState['connectionStatus']) => void;
+  // Per-machine connection status
+  machineStatuses: Record<string, 'connected' | 'disconnected' | 'reconnecting'>;
+  setMachineStatuses: (s: Record<string, 'connected' | 'disconnected' | 'reconnecting'>) => void;
+  getMachineStatus: (machineId: string) => 'connected' | 'disconnected' | 'reconnecting';
 
   // Machines
   machines: MachineConfig[];
-  activeMachineId: string | null;
   setMachines: (m: MachineConfig[]) => void;
-  setActiveMachine: (id: string | null) => void;
 
-  // Sessions
-  sessions: SessionInfo[];
-  activeSessionId: string | null;
-  setSessions: (s: SessionInfo[]) => void;
-  setActiveSession: (id: string | null) => void;
+  // Per-machine sessions
+  machineSessions: Record<string, SessionInfo[]>;
+  setMachineSessions: (machineId: string, sessions: SessionInfo[]) => void;
+  removeSession: (machineId: string, sessionId: string) => void;
 
-  // Hardware
-  hwStatus: HwStatus | null;
-  setHwStatus: (s: HwStatus) => void;
+  // Per-machine hardware status
+  machineHwStatus: Record<string, HwStatus>;
+  setMachineHwStatus: (machineId: string, status: HwStatus) => void;
 
-  // Prompt card
+  // Per-machine auto mode
+  machineAutoMode: Record<string, boolean>;
+  setMachineAutoMode: (machineId: string, enabled: boolean) => void;
+
+  // Per-machine event log
+  machineEventLogs: Record<string, EventLogEntry[]>;
+  setMachineEventLog: (machineId: string, entries: EventLogEntry[]) => void;
+  addMachineEvent: (machineId: string, entry: EventLogEntry) => void;
+
+  // Prompt card (global — one at a time)
   activePrompt: InteractivePrompt | null;
   setActivePrompt: (p: InteractivePrompt | null) => void;
-
-  // Auto mode
-  autoModeEnabled: boolean;
-  setAutoModeEnabled: (e: boolean) => void;
-
-  // Event log
-  eventLog: EventLogEntry[];
-  addEvent: (e: EventLogEntry) => void;
-  setEventLog: (entries: EventLogEntry[]) => void;
 
   // Config
   config: AppConfig;
   setConfig: (c: AppConfig) => void;
+
+  // Terminal writers: "machineId:sessionId" -> write callback
+  terminalWriters: Map<string, (data: string) => void>;
+  registerTerminalWriter: (key: string, writer: (data: string) => void) => void;
+  unregisterTerminalWriter: (key: string) => void;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -48,33 +51,67 @@ const DEFAULT_CONFIG: AppConfig = {
   preferences: { fontSize: 14, locale: 'en' },
 };
 
-export const useStore = create<AppState>((set) => ({
-  connectionStatus: 'disconnected',
-  setConnectionStatus: (connectionStatus) => set({ connectionStatus }),
+export const useStore = create<AppState>((set, get) => ({
+  machineStatuses: {},
+  setMachineStatuses: (machineStatuses) => set({ machineStatuses }),
+  getMachineStatus: (machineId) => get().machineStatuses[machineId] || 'disconnected',
 
   machines: [],
-  activeMachineId: null,
   setMachines: (machines) => set({ machines }),
-  setActiveMachine: (activeMachineId) => set({ activeMachineId }),
 
-  sessions: [],
-  activeSessionId: null,
-  setSessions: (sessions) => set({ sessions }),
-  setActiveSession: (activeSessionId) => set({ activeSessionId }),
+  machineSessions: {},
+  setMachineSessions: (machineId, sessions) =>
+    set((state) => ({
+      machineSessions: { ...state.machineSessions, [machineId]: sessions },
+    })),
+  removeSession: (machineId, sessionId) =>
+    set((state) => ({
+      machineSessions: {
+        ...state.machineSessions,
+        [machineId]: (state.machineSessions[machineId] || []).filter((s) => s.id !== sessionId),
+      },
+    })),
 
-  hwStatus: null,
-  setHwStatus: (hwStatus) => set({ hwStatus }),
+  machineHwStatus: {},
+  setMachineHwStatus: (machineId, status) =>
+    set((state) => ({
+      machineHwStatus: { ...state.machineHwStatus, [machineId]: status },
+    })),
+
+  machineAutoMode: {},
+  setMachineAutoMode: (machineId, enabled) =>
+    set((state) => ({
+      machineAutoMode: { ...state.machineAutoMode, [machineId]: enabled },
+    })),
+
+  machineEventLogs: {},
+  setMachineEventLog: (machineId, entries) =>
+    set((state) => ({
+      machineEventLogs: { ...state.machineEventLogs, [machineId]: entries },
+    })),
+  addMachineEvent: (machineId, entry) =>
+    set((state) => ({
+      machineEventLogs: {
+        ...state.machineEventLogs,
+        [machineId]: [...(state.machineEventLogs[machineId] || []), entry],
+      },
+    })),
 
   activePrompt: null,
   setActivePrompt: (activePrompt) => set({ activePrompt }),
 
-  autoModeEnabled: false,
-  setAutoModeEnabled: (autoModeEnabled) => set({ autoModeEnabled }),
-
-  eventLog: [],
-  addEvent: (e) => set((state) => ({ eventLog: [...state.eventLog, e] })),
-  setEventLog: (eventLog) => set({ eventLog }),
-
   config: DEFAULT_CONFIG,
   setConfig: (config) => set({ config, machines: config.machines }),
+
+  terminalWriters: new Map(),
+  registerTerminalWriter: (key, writer) => {
+    const writers = new Map(get().terminalWriters);
+    writers.set(key, writer);
+    set({ terminalWriters: writers });
+  },
+  unregisterTerminalWriter: (key) => {
+    const writers = new Map(get().terminalWriters);
+    writers.delete(key);
+    set({ terminalWriters: writers });
+  },
 }));

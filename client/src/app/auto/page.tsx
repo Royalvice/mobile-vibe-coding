@@ -6,13 +6,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useStore } from '@/lib/store';
+import { sendToMachine } from '@/lib/connection';
 import type { PromptTemplate } from '@shared/types';
 
 export default function AutoPage() {
   const t = useTranslations('auto');
   const tc = useTranslations('common');
   const router = useRouter();
-  const { autoModeEnabled, setAutoModeEnabled, eventLog } = useStore();
+  const { machines, machineAutoMode, machineEventLogs } = useStore();
 
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [pollInterval, setPollInterval] = useState(180); // 3 minutes default
@@ -33,10 +34,28 @@ export default function AutoPage() {
     if (editingId === id) setEditingId(null);
   };
 
+  const [selectedMachineId, setSelectedMachineId] = useState<string>(machines[0]?.id || '');
+
   const toggleAuto = () => {
-    // TODO: send set_auto_mode message via WebSocket
-    setAutoModeEnabled(!autoModeEnabled);
+    if (!selectedMachineId) return;
+    const isRunning = machineAutoMode[selectedMachineId] || false;
+    sendToMachine(selectedMachineId, {
+      type: 'set_auto_mode',
+      config: {
+        enabled: !isRunning,
+        pollIntervalMs: pollInterval * 1000,
+        templates,
+        autoApprove: true,
+      },
+    });
+    // Also push templates
+    if (!isRunning) {
+      sendToMachine(selectedMachineId, { type: 'update_templates', templates });
+    }
   };
+
+  const currentAutoEnabled = selectedMachineId ? (machineAutoMode[selectedMachineId] || false) : false;
+  const currentEventLog = selectedMachineId ? (machineEventLogs[selectedMachineId] || []) : [];
 
   return (
     <div style={{ padding: '20px', maxWidth: '480px', margin: '0 auto' }}>
@@ -50,6 +69,21 @@ export default function AutoPage() {
         <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 600 }}>{t('title')}</h1>
       </div>
 
+      {/* Machine selector */}
+      {machines.length > 1 && (
+        <div style={{ marginBottom: '16px' }}>
+          <select
+            value={selectedMachineId}
+            onChange={(e) => setSelectedMachineId(e.target.value)}
+            style={{ ...inputStyle, marginBottom: 0 }}
+          >
+            {machines.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Toggle */}
       <button
         onClick={toggleAuto}
@@ -58,7 +92,7 @@ export default function AutoPage() {
           padding: '14px',
           borderRadius: '12px',
           border: 'none',
-          background: autoModeEnabled ? 'var(--success)' : 'var(--accent)',
+          background: currentAutoEnabled ? 'var(--success)' : 'var(--accent)',
           color: '#fff',
           cursor: 'pointer',
           fontSize: '15px',
@@ -67,7 +101,7 @@ export default function AutoPage() {
           transition: 'background 0.2s ease',
         }}
       >
-        {autoModeEnabled ? `● ${t('running')} — ${t('stop')}` : t('start')}
+        {currentAutoEnabled ? `● ${t('running')} — ${t('stop')}` : t('start')}
       </button>
 
       {/* Poll interval */}
@@ -149,11 +183,11 @@ export default function AutoPage() {
       </div>
 
       {/* Event log summary */}
-      {eventLog.length > 0 && (
+      {currentEventLog.length > 0 && (
         <div>
           <h2 style={{ fontSize: '15px', fontWeight: 500, marginBottom: '8px' }}>Event Log</h2>
           <div style={{ maxHeight: '200px', overflow: 'auto' }}>
-            {eventLog.slice(-20).reverse().map((e) => (
+            {currentEventLog.slice(-20).reverse().map((e) => (
               <div key={e.id} style={{
                 padding: '8px 0',
                 borderBottom: '1px solid var(--border)',
