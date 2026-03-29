@@ -63,6 +63,16 @@ outputParser.onPromptDetected = (prompt, sessionId) => {
 // --- WebSocket server ---
 const wss = new WebSocketServer({ port: PORT });
 
+wss.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Either:`);
+    console.error(`  1. Kill the existing process: npx kill-port ${PORT}`);
+    console.error(`  2. Use a different port: MVC_PORT=9877 npm run dev`);
+    process.exit(1);
+  }
+  throw err;
+});
+
 wss.on('connection', (ws) => {
   const client: ClientState = { ws, attachedSessions: new Map() };
   clients.add(client);
