@@ -5,6 +5,7 @@ node_modules/
 dist/
 out/
 .next/
+*.tsbuildinfo
 
 # OS files
 .DS_Store
@@ -20,6 +21,9 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Claude Code local settings (may contain permissions/paths)
+.claude/
 
 # Capacitor native projects (generated)
 client/ios/
