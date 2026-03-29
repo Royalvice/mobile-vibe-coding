@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import AppProvider from '@/components/AppProvider';
+import BottomNav from '@/components/BottomNav';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -31,6 +32,7 @@ export default async function RootLayout({
         <NextIntlClientProvider messages={messages}>
           <AppProvider>
             {children}
+            <BottomNav />
           </AppProvider>
         </NextIntlClientProvider>
       </body>

@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic';
 import { useStore } from '@/lib/store';
 import { sendToMachine, useTerminalWriter } from '@/lib/connection';
 import PromptCard from '@/components/PromptCard';
+import QuickBar from '@/components/QuickBar';
 
 const TerminalView = dynamic(() => import('@/components/TerminalView'), { ssr: false });
 
@@ -84,7 +85,7 @@ export default function SessionPage() {
       </div>
 
       {/* Terminal */}
-      <div style={{ flex: 1, padding: '4px' }}>
+      <div style={{ flex: 1, padding: '4px', minHeight: 0 }}>
         <TerminalView
           onData={handleTermData}
           onResize={handleResize}
@@ -92,6 +93,9 @@ export default function SessionPage() {
           onReady={() => setWriterReady(true)}
         />
       </div>
+
+      {/* Quick action bar for mobile */}
+      <QuickBar onSend={handleTermData} />
 
       {/* Prompt card overlay */}
       {activePrompt && activePrompt.sessionId === sessionId && (

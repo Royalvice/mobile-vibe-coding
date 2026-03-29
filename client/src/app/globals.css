@@ -10,15 +10,22 @@
   --text-muted: #5a5a6e;
   --accent: #7c6fea;
   --accent-soft: #7c6fea22;
+  --accent-glow: #7c6fea33;
   --success: #5cb88a;
+  --success-soft: #5cb88a22;
   --warning: #e8b84a;
+  --warning-soft: #e8b84a22;
   --error: #e85a5a;
+  --error-soft: #e85a5a22;
   --border: #2a2a38;
   --terminal-bg: #08080c;
+  --nav-height: 56px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html, body {
@@ -29,9 +36,10 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
+  min-height: 100dvh;
 }
 
-/* Healing / soft aesthetic touches */
+/* Healing / soft aesthetic */
 ::selection {
   background: var(--accent-soft);
   color: var(--text-primary);
@@ -40,12 +48,70 @@ html, body {
 ::-webkit-scrollbar {
   width: 4px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 2px;
+}
+
+/* Page transition */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  50% { box-shadow: 0 0 12px 2px var(--accent-glow); }
+}
+
+.page-enter {
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* Card hover */
+.card-interactive {
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.card-interactive:active {
+  transform: scale(0.98);
+}
+
+/* Status dot pulse */
+.status-dot-reconnecting {
+  animation: pulse-soft 1.5s ease-in-out infinite;
+}
+
+/* Glow effect for active auto mode */
+.glow-active {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Mobile safe areas */
+.safe-bottom {
+  padding-bottom: calc(var(--nav-height) + var(--safe-bottom));
+}
+
+/* Input focus style */
+input:focus, textarea:focus, select:focus {
+  border-color: var(--accent) !important;
+  outline: none;
+}
+
+/* Button base */
+button {
+  font-family: inherit;
+  transition: opacity 0.15s ease;
+}
+button:active {
+  opacity: 0.8;
 }
