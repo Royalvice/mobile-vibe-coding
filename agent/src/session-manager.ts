@@ -1,15 +1,23 @@
-// Session manager: create, list, attach, kill tmux sessions running codex/cc
+// Session manager: cross-platform session lifecycle for codex/cc
+//
+// Linux: tmux-backed sessions (persist across agent restarts)
+// Windows: in-process node-pty sessions (live only while agent runs)
 
-import { spawn, execSync } from 'child_process';
+import { execSync } from 'child_process';
+import * as pty from 'node-pty';
 import { nanoid } from 'nanoid';
 import type { SessionInfo, AgentTool } from '../../shared/types.js';
 
+const IS_WINDOWS = process.platform === 'win32';
+const TMUX_PREFIX = 'mvc-';
+
 interface ManagedSession {
   info: SessionInfo;
-  tmuxName: string;
+  /** tmux session name (Linux only) */
+  tmuxName?: string;
+  /** Direct PTY handle (Windows only) */
+  ptyProc?: pty.IPty;
 }
-
-const TMUX_PREFIX = 'mvc-';
 
 function tmuxCmd(args: string): string {
   try {
@@ -20,23 +28,26 @@ function tmuxCmd(args: string): string {
 }
 
 function toolCommand(tool: AgentTool): string {
-  switch (tool) {
-    case 'codex':
-      return 'codex';
-    case 'claude-code':
-      return 'claude';
-  }
+  return tool === 'codex' ? 'codex' : 'claude';
+}
+
+function shellForPlatform(): string {
+  return IS_WINDOWS
+    ? process.env.COMSPEC || 'cmd.exe'
+    : process.env.SHELL || '/bin/bash';
 }
 
 export class SessionManager {
   private sessions = new Map<string, ManagedSession>();
 
   constructor() {
-    this.discoverExisting();
+    if (!IS_WINDOWS) {
+      this.discoverTmuxSessions();
+    }
   }
 
-  /** Scan for existing mvc- prefixed tmux sessions */
-  private discoverExisting(): void {
+  // --- Linux: discover existing tmux sessions ---
+  private discoverTmuxSessions(): void {
     const raw = tmuxCmd('list-sessions -F "#{session_name}" 2>/dev/null');
     if (!raw) return;
 
@@ -61,15 +72,8 @@ export class SessionManager {
 
   create(tool: AgentTool, workdir: string, name?: string): SessionInfo {
     const id = nanoid(8);
-    const tmuxName = `${TMUX_PREFIX}${id}`;
     const cmd = toolCommand(tool);
     const displayName = name || `${tool}-${id}`;
-
-    // Create detached tmux session running the agent CLI
-    execSync(
-      `tmux new-session -d -s "${tmuxName}" -c "${workdir}" "${cmd}"`,
-      { encoding: 'utf-8' },
-    );
 
     const info: SessionInfo = {
       id,
@@ -80,41 +84,87 @@ export class SessionManager {
       alive: true,
     };
 
-    this.sessions.set(id, { info, tmuxName });
+    if (IS_WINDOWS) {
+      // Windows: spawn CLI directly via node-pty, keep handle in memory
+      const proc = pty.spawn(shellForPlatform(), ['/c', cmd], {
+        name: 'xterm-256color',
+        cols: 120,
+        rows: 40,
+        cwd: workdir === '~' ? (process.env.USERPROFILE || 'C:\\') : workdir,
+        env: process.env as Record<string, string>,
+      });
+
+      proc.onExit(() => {
+        const session = this.sessions.get(id);
+        if (session) session.info.alive = false;
+      });
+
+      this.sessions.set(id, { info, ptyProc: proc });
+    } else {
+      // Linux: create detached tmux session
+      const tmuxName = `${TMUX_PREFIX}${id}`;
+      const resolvedWorkdir = workdir === '~' ? (process.env.HOME || '/') : workdir;
+      execSync(
+        `tmux new-session -d -s "${tmuxName}" -c "${resolvedWorkdir}" "${cmd}"`,
+        { encoding: 'utf-8' },
+      );
+      this.sessions.set(id, { info, tmuxName });
+    }
+
     return info;
   }
 
   list(): SessionInfo[] {
-    // Refresh alive status
-    const liveSessions = new Set<string>();
-    const raw = tmuxCmd('list-sessions -F "#{session_name}" 2>/dev/null');
-    if (raw) {
-      for (const line of raw.split('\n')) {
-        liveSessions.add(line.trim());
+    if (!IS_WINDOWS) {
+      // Refresh alive status from tmux
+      const liveSessions = new Set<string>();
+      const raw = tmuxCmd('list-sessions -F "#{session_name}" 2>/dev/null');
+      if (raw) {
+        for (const line of raw.split('\n')) {
+          liveSessions.add(line.trim());
+        }
+      }
+      for (const [, session] of this.sessions) {
+        if (session.tmuxName) {
+          session.info.alive = liveSessions.has(session.tmuxName);
+        }
       }
     }
-
-    for (const [, session] of this.sessions) {
-      session.info.alive = liveSessions.has(session.tmuxName);
-    }
+    // Windows: alive status is updated by onExit callback
 
     return Array.from(this.sessions.values()).map((s) => s.info);
   }
 
-  getTmuxName(sessionId: string): string | null {
-    return this.sessions.get(sessionId)?.tmuxName ?? null;
+  /**
+   * Get the attachment target for a session.
+   * Linux: returns { type: 'tmux', name: string }
+   * Windows: returns { type: 'pty', proc: IPty }
+   */
+  getTarget(sessionId: string): { type: 'tmux'; name: string } | { type: 'pty'; proc: pty.IPty } | null {
+    const session = this.sessions.get(sessionId);
+    if (!session) return null;
+
+    if (session.tmuxName) {
+      return { type: 'tmux', name: session.tmuxName };
+    }
+    if (session.ptyProc) {
+      return { type: 'pty', proc: session.ptyProc };
+    }
+    return null;
   }
 
   kill(sessionId: string): boolean {
     const session = this.sessions.get(sessionId);
     if (!session) return false;
 
-    try {
-      execSync(`tmux kill-session -t "${session.tmuxName}"`, {
-        encoding: 'utf-8',
-      });
-    } catch {
-      // Session may already be dead
+    if (session.tmuxName) {
+      try {
+        execSync(`tmux kill-session -t "${session.tmuxName}"`, { encoding: 'utf-8' });
+      } catch { /* may already be dead */ }
+    }
+
+    if (session.ptyProc) {
+      session.ptyProc.kill();
     }
 
     session.info.alive = false;
@@ -124,5 +174,9 @@ export class SessionManager {
 
   get(sessionId: string): SessionInfo | null {
     return this.sessions.get(sessionId)?.info ?? null;
+  }
+
+  get platform(): 'linux' | 'windows' {
+    return IS_WINDOWS ? 'windows' : 'linux';
   }
 }

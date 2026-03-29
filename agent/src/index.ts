@@ -107,20 +107,20 @@ function handleMessage(client: ClientState, msg: ClientMessage): void {
     }
 
     case 'attach_session': {
-      const tmuxName = sessionManager.getTmuxName(msg.sessionId);
-      if (!tmuxName) {
+      const target = sessionManager.getTarget(msg.sessionId);
+      if (!target) {
         sendTo(client, { type: 'error', code: 'NOT_FOUND', message: 'Session not found' });
         return;
       }
       // Detach existing bridge if any
       client.attachedSessions.get(msg.sessionId)?.dispose();
 
-      const bridge = new PtyBridge(tmuxName, 120, 40, {
-        onData: (data) => {
+      const bridgeCallbacks = {
+        onData: (data: string) => {
           sendTo(client, { type: 'output', sessionId: msg.sessionId, data });
           outputParser.feed(msg.sessionId, data);
         },
-        onExit: (code) => {
+        onExit: (code: number) => {
           client.attachedSessions.delete(msg.sessionId);
           autoMode.unregisterBridge(msg.sessionId);
           sendTo(client, {
@@ -129,7 +129,11 @@ function handleMessage(client: ClientState, msg: ClientMessage): void {
             reason: `Process exited with code ${code}`,
           });
         },
-      });
+      };
+
+      const bridge = target.type === 'tmux'
+        ? PtyBridge.attachTmux(target.name, 120, 40, bridgeCallbacks)
+        : PtyBridge.attachDirect(target.proc, bridgeCallbacks);
 
       client.attachedSessions.set(msg.sessionId, bridge);
       autoMode.registerBridge(msg.sessionId, bridge);
@@ -244,5 +248,6 @@ setInterval(async () => {
 }, HW_POLL_INTERVAL);
 
 console.log(`mobile-vibe-coding agent listening on ws://0.0.0.0:${PORT}`);
+console.log(`Platform: ${sessionManager.platform}`);
 console.log(`Sessions: ${sessionManager.list().length} existing`);
 console.log('Ready.');
