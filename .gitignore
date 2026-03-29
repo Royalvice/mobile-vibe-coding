@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+out/
+.next/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Capacitor native projects (generated)
+client/ios/
+client/android/
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

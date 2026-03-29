@@ -1,0 +1,58 @@
+{
+  "home": {
+    "title": "机器列表",
+    "noMachines": "暂无配置的机器",
+    "addMachine": "添加机器",
+    "sessions": "{count} 个会话"
+  },
+  "session": {
+    "title": "会话",
+    "create": "新建会话",
+    "kill": "结束会话",
+    "attach": "连接",
+    "detach": "断开",
+    "codex": "Codex",
+    "claudeCode": "Claude Code"
+  },
+  "auto": {
+    "title": "自动模式",
+    "start": "启动自动",
+    "stop": "停止自动",
+    "running": "运行中",
+    "templates": "Prompt 模板",
+    "addTemplate": "添加模板",
+    "interval": "轮询间隔（秒）"
+  },
+  "settings": {
+    "title": "设置",
+    "import": "导入配置",
+    "export": "导出配置",
+    "language": "语言",
+    "fontSize": "字体大小"
+  },
+  "hw": {
+    "title": "硬件状态",
+    "cpu": "CPU",
+    "ram": "内存",
+    "disk": "磁盘",
+    "gpu": "GPU"
+  },
+  "prompt": {
+    "selectOption": "请选择一个选项",
+    "addNote": "添加备注（可选）",
+    "confirm": "确认",
+    "cancel": "取消"
+  },
+  "common": {
+    "back": "返回",
+    "save": "保存",
+    "delete": "删除",
+    "cancel": "取消",
+    "confirm": "确认",
+    "loading": "加载中...",
+    "error": "错误",
+    "connected": "已连接",
+    "disconnected": "已断开",
+    "reconnecting": "重连中..."
+  }
+}

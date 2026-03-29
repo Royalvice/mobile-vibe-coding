@@ -1,0 +1,30 @@
+{
+  "name": "mobile-vibe-coding-agent",
+  "version": "0.1.0",
+  "description": "Remote agent daemon for mobile-vibe-coding: manages tmux sessions, PTY bridge, auto mode, and hardware monitoring",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "mvc-agent": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "node-pty": "^1.0.0",
+    "ws": "^8.18.0",
+    "systeminformation": "^5.23.0",
+    "nanoid": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "tsx": "^4.19.0",
+    "eslint": "^9.0.0"
+  },
+  "license": "MIT"
+}

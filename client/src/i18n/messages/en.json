@@ -1,0 +1,58 @@
+{
+  "home": {
+    "title": "Machines",
+    "noMachines": "No machines configured",
+    "addMachine": "Add Machine",
+    "sessions": "{count} sessions"
+  },
+  "session": {
+    "title": "Session",
+    "create": "New Session",
+    "kill": "End Session",
+    "attach": "Attach",
+    "detach": "Detach",
+    "codex": "Codex",
+    "claudeCode": "Claude Code"
+  },
+  "auto": {
+    "title": "Auto Mode",
+    "start": "Start Auto",
+    "stop": "Stop Auto",
+    "running": "Running",
+    "templates": "Prompt Templates",
+    "addTemplate": "Add Template",
+    "interval": "Poll Interval (sec)"
+  },
+  "settings": {
+    "title": "Settings",
+    "import": "Import Config",
+    "export": "Export Config",
+    "language": "Language",
+    "fontSize": "Font Size"
+  },
+  "hw": {
+    "title": "Hardware",
+    "cpu": "CPU",
+    "ram": "RAM",
+    "disk": "Disk",
+    "gpu": "GPU"
+  },
+  "prompt": {
+    "selectOption": "Select an option",
+    "addNote": "Add a note (optional)",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
+  "common": {
+    "back": "Back",
+    "save": "Save",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "error": "Error",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "reconnecting": "Reconnecting..."
+  }
+}
